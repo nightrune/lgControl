@@ -9,17 +9,18 @@ Created this file to act as a remote control from my pc to my computer!
 
 """
 
-"""
+
 try:
     import serial
     print 'Serial Imported'
 except:
     import testserial as serial
     pass
-"""
-#import testserial as serial
-import serial
     
+#import testserial as serial
+#import serial
+    
+import xml.dom.minidom
 import binascii
 import threading
 import Queue
@@ -52,10 +53,19 @@ ser.close()
 """
 
 class lgtv(object):
-    def __init__(self, comPort='COM0', setID='00'):
-        self.comPort = comPort
+    def __init__(self, file='', comPort='COM0', setID='00'):
+        self.inputs = {}
+        self.alive = False
+        
+        if(file != ''):
+            self.__importSettings(file)
+            self.comPort = comPort
+            self.setID = setID
+        else:            
+            self.comPort = comPort
+            self.setID = setID
+        
         print 'Opening serial connection on: ', comPort
-        self.setID = setID
         self.alive = True
         
         #Open serial port
@@ -82,6 +92,26 @@ class lgtv(object):
     
     def disconnect(self):
         self.__del__()
+    
+    def __importSettings(self, file):
+        if self.alive:
+            raise Exception('Can not try to import settings during runtime!!')
+        try:
+            print "Attempting to open file"
+            dom = xml.dom.minidom.parse(file)
+            #Now to parse the file
+            for node in dom.getElementsByTagName('input'):
+                print node
+                name = node.getAttribute('name')
+                if(name != ''):
+                    data = node.childNodes[0].data
+                    self.inputs[name] = data
+            
+        except:
+            print "Invalid Config File"
+            quit()
+        print "Imported config file"
+        return
         
     def __tx__(self):
         print 'Starting transmit thread'
@@ -109,6 +139,14 @@ class lgtv(object):
             self.txQueue.put(lgMsg(self.setID, 'ka', '0'), False)
         return
         
+    def input(self, inputString):
+        """
+        Takes a string and updates the input via the string.
+        This hasn't been completely updated yet, and really needs a way to load in a 
+        text file that allows you to set the values
+        """
+        if(self.inputs.has_key(inputString)):
+            self.txQueue.put(lgMsg(self.setID, 'xb', self.inputs[inputString]), False)
     
         
 class lgMsg(object):
@@ -140,14 +178,22 @@ class lgMsg(object):
         return self.msg
     
 if __name__ == '__main__':
-    tv = lgtv('COM1')
+    #Load configuration files
+    tv = lgtv('config.xml', 'COM1')
     
     root = Tk()
     root.title('TV Remote')
+    inputButtons = []
     powerButtonOn = ttk.Button(root, text="Power On", command=lambda: tv.power(True))
-    powerButtonOff = ttk.Button(root, text="Power On", command=lambda: tv.power(False))
+    powerButtonOff = ttk.Button(root, text="Power Off", command=lambda: tv.power(False))
+    for key in tv.inputs:
+        inputButtons.append(ttk.Button(root, text=key, command = lambda x = key: tv.input(x)))
+    #Grid the buttons
     powerButtonOn.grid(column=0, row=0)
     powerButtonOff.grid(column=0, row=1)
+    for i in range(len(inputButtons)):
+        inputButtons[i].grid(column=0, row=(2+i))
+    
     root.mainloop()
     
     tv.disconnect();
