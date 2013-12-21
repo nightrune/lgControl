@@ -1,10 +1,14 @@
 <list>
-    <tv name="Sean">
+
+    <tv name="Sean" COM="COM1" baud="9600">
         <input name="Computer">90</input>
-        <input name="Xbox">42</input>
-        <input name="Wii">41</input>
-        <input></input>
+        <input name="Xbox">40</input>
+        <input name="Wii">40</input>
+        <input name="DVD Player">20</input>
+        <volume min=10 max=100>
     </tv>
+    
     <tv name="Dude">
     </tv>
+    
 </list>

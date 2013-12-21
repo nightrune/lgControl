@@ -1,3 +1,4 @@
+from copy import deepcopy
 import time
 
 class Serial(object):
@@ -19,15 +20,20 @@ class Serial(object):
         self.dummyData = ''
 		
     def write(self, data):
-        self.dummyData = data
-        print 'Write: ', data
+        self.dummyData = deepcopy(data)
+        print 'Dummy write: ', data
 		
     def read(self, size):
+        data = ''
         time.sleep(self.timeout)
-        if(size > len(self.dummyData)):
-            size = len(self.dummyData)
-        print 'Read: ', self.dummyData[:size]
-        return self.dummyData[:size]
+        if(size > self.dummyData.__len__()):
+            size = self.dummyData.__len__()
+        
+        if(size > 0):
+            data = self.dummyData[:size]
+            self.dummyData = ''
+            print 'Dummy read: ', data
+        return data
     
     def close(self):
         print 'Dummy port closed'

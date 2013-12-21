@@ -15,10 +15,9 @@ try:
     print 'Serial Imported'
 except:
     import testserial as serial
+    print 'Pyserial not found, using a dummy serial port'
     pass
     
-#import testserial as serial
-#import serial
     
 import xml.dom.minidom
 import binascii
@@ -26,45 +25,29 @@ import threading
 import Queue
 import string
 import time
-
-from Tkinter import *
-import ttk
-
-
-"""
-ser = serial.Serial('COM1', timeout=4)
-ser.baudrate = 9600
-
-print ser.portstr
-
-array = 'ka 00 1\x0D'
-print 'Send'
-print 'Ascii Data: ', array
-print 'Raw Data:   ', binascii.hexlify(array)
-
-ser.write(array)
-
-x = ser.read(100)
-print 'Receive'
-print 'Ascii Data: ', x
-print 'Raw Data:   ', binascii.hexlify(x)
-
-ser.close()
-"""
+import sys
 
 class lgtv(object):
+    inputs = {}
+    alive = False
+    comPort = ''
+    setID = ''
+    baud = ''
+    
     def __init__(self, file='', comPort='COM0', setID='00'):
-        self.inputs = {}
-        self.alive = False
         
         if(file != ''):
             self.__importSettings(file)
+        
+        if(self.comPort == ''):
             self.comPort = comPort
-            self.setID = setID
-        else:            
-            self.comPort = comPort
+        
+        if(self.setID == ''):
             self.setID = setID
         
+        print 'Found baud: ', self.baud
+        print 'Found Set ID: ', self.setID
+        print 'Found COM port: ', self.comPort
         print 'Opening serial connection on: ', comPort
         self.alive = True
         
@@ -100,14 +83,28 @@ class lgtv(object):
             print "Attempting to open file"
             dom = xml.dom.minidom.parse(file)
             #Now to parse the file
-            for node in dom.getElementsByTagName('input'):
-                print node
-                name = node.getAttribute('name')
-                if(name != ''):
-                    data = node.childNodes[0].data
-                    self.inputs[name] = data
+            node = dom.getElementsByTagName('tv')[0]
+            if(node.hasAttribute('COM')):
+                self.comPort = node.getAttribute('COM')
             
+            if(node.hasAttribute('setId')):
+                self.setId = node.getAttribute('setId')
+                
+            if(node.hasAttribute('baud')):
+                self.baud = node.getAttribute('baud')
+                
+            #for input_node in dom.getElementsByTagName('input'):
+                #print input_node
+                #name = input_node.getAttribute('name')
+                #if(name != ''):
+                    #data = input_node.childNodes[0].data
+                    #self.inputs[name] = data
+            
+            #for volume_node in node.getElementsByTagName('volume'):
+                #print volume_node
+           
         except:
+            print sys.exc_info()[0]
             print "Invalid Config File"
             quit()
         print "Imported config file"
@@ -117,7 +114,7 @@ class lgtv(object):
         print 'Starting transmit thread'
         while self.alive:
             try:
-                self.__ser.write(self.txQueue.get(True, 1))
+                self.__ser.write(self.txQueue.get(True, 1).msg)
             except:
                 pass
         return
@@ -126,8 +123,11 @@ class lgtv(object):
         print 'Starting recieve thread'
         while self.alive:
             try:
-                self.__ser.read(100)
+                data = self.__ser.read(100)
+                if data is not '':
+                    print "Data recieved: ", data
             except:
+                print "Couldn't Read"
                 pass
     
     def power(self, on=True):
@@ -178,6 +178,8 @@ class lgMsg(object):
         return self.msg
     
 if __name__ == '__main__':
+    from Tkinter import *
+    import ttk
     #Load configuration files
     tv = lgtv('config.xml', 'COM1')
     
